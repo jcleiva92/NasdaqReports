@@ -114,15 +114,18 @@ def get_Balance_Sheet(symbol):
 		vals.append(results[i][2])
 
 	df=pd.DataFrame(vals,index=g_Index,columns=titles)
+	df=get_Metrics(df,symbol)
+	df.to_csv(fname)
+
+def get_Metrics(df,symbol):
 	netWorkingCap=net_Working_Capital(df.ix[('Current Assets','Total Current Assets')],df.ix[('Current Liabilities','Total Current Liabilities')])
-	
 	df.ix[('Metrics','Net Working Capital'),:]=netWorkingCap
 	marketValueEquity=get_Market_Value_of_Equity(symbol)
 	df.ix[('Metrics','Market Value of Equity'),:]= to_Cash(marketValueEquity)
 	df.ix[('Metrics','Price to Book Ratio'),:]=get_Market_Book_Ratio(marketValueEquity,df.ix[('Stock Holders Equity','Total Equity'),:])
 	df.ix[('Metrics','Enterprise Value (TEV)'),:]=get_Enterprise_Value(marketValueEquity,df.ix[('Current Liabilities','Short-Term Debt / Current Portion of Long-Term Debt'),:],df.ix[('Current Liabilities','Long-Term Debt'),:],df.ix[('Current Assets','Cash and Cash Equivalents'),:]).apply(to_Cash)
-	df.to_csv(fname)
-
+	return df
+	
 def net_Working_Capital(current_Assets,current_Liabilities):
 	current_Assets=current_Assets.apply(to_Int)
 	current_Liabilities=current_Liabilities.apply(to_Int)

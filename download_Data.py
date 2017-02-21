@@ -3,22 +3,26 @@
 import pandas as pd
 import urllib
 from bs4 import BeautifulSoup
-from collections import OrderedDict
+from metrics import *
+from utils import *
 
-def get_Income_Statement(symbol):
-	fname=symbol+'-Income-Statement'
 
-	menu_Base="Ingrese el tipo de periodo: \n"
-	menu='\n 1. Annual'
-	menu+='\n 2. Quarterly'
-	menu+='\n Opcion: '
-	while True:
-		period_type=raw_input(menu_Base+menu)
-		if period_type not in ['1','2']:
-			menu_Base='\nHa ingresado un tipo de periodo no valido!!! (Los tipos de periodo van del 1 al 2)\n'
-		else: break
+def get_Data(symbol,report):
 	
-	url=r'http://www.nasdaq.com/symbol/'+symbol+'/financials?query=income-statement'
+	if report=='balance-sheet': 
+		fname=symbol+'-Balance-Sheet'
+	elif report=='income-statement':
+		fname=symbol+'-Income-Statement'
+	elif report=='cash-flow':
+		fname=symbol+'-Cash-Flow'
+	else:
+		fname=symbol+'-Ratios'
+		
+	url=r'http://www.nasdaq.com/symbol/{0}/financials?query={1}'.format(symbol,report)
+	
+	if report!='ratios':
+		period_type=get_Period_type()
+	
 	if period_type=='2':url+=r'&data=quarterly'
 	
 	html=urllib.urlopen(url).read()
@@ -41,7 +45,10 @@ def get_Income_Statement(symbol):
 	
 	contents=soup.find_all('table',class_='')[3]
 	results=[]
-	m_Index='Revenues'
+	
+	if report=='income-statement': m_Index='Revenues'
+	elif report=='cash-flow': m_Index='Income'
+	
 	for row in contents.find_all('tr')[1:]:
 		for col in row.find_all('th'):
 			if col.contents: 
@@ -50,7 +57,7 @@ def get_Income_Statement(symbol):
 		if row.find_all('td',attrs={'class':''}):
 			for con in row.find_all('td',attrs={'class':''}): 
 				if con.find_all('table'): continue
-				if con.contents: values.append(con.contents[0])
+				if con.contents: values.append(con.contents[0])					
 			if values: 
 				results.append([m_Index,index,values])
 		else:
@@ -66,7 +73,12 @@ def get_Income_Statement(symbol):
 		vals.append(results[i][2])
 
 	df=pd.DataFrame(vals,index=g_Index,columns=titles)
+	if report=='balance-sheet': 
+		df=get_Balance_Metrics(df,symbol)
+	if report=='income-statement':
+		df=get_Income_Metrics(df,symbol)
 	df.to_csv(fname)
-	
+
 if __name__=='__main__':
-	print get_Income_Statement('ibm')
+	get_Data('ibm','income-statement')
+	get_Data('ibm','balance-sheet')
